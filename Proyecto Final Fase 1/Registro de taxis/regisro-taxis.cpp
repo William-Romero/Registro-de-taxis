@@ -67,7 +67,8 @@ public:
 class TrueDrive {
 private:
     vector<Taxi> taxis;
-    queue<Taxi> cola;
+    queue<Taxi> colaEjecutiva;
+    queue<Taxi> colaTradicional;
 
     bool esUnico(int placa, int motor, int doc, int seguro) {
         for (auto &t : taxis) {
@@ -79,6 +80,8 @@ private:
     }
 
 public:
+
+
     void registrarTaxi() {
         int placa = leerEntero("Placa: ");
         int motor = leerEntero("Número de motor: ");
@@ -106,10 +109,16 @@ public:
         Taxi t(placa, motor, modelo, año, c);
 
         taxis.push_back(t);
-        cola.push(t);
 
-        cout << " Taxi registrado con categoria: " << t.categoria << endl;
+   
+        if (t.categoria == "Ejecutiva")
+            colaEjecutiva.push(t);
+        else
+            colaTradicional.push(t);
+
+        cout << " Taxi registrado con categoría: " << t.categoria << endl;
     }
+
 
     void mostrarTaxis() {
         cout << "\n=== Lista de Taxis Registrados ===\n";
@@ -123,18 +132,90 @@ public:
         }
     }
 
+
     void mostrarCola() {
-        cout << "\n=== Cola de Espera ===\n";
-        queue<Taxi> temp = cola;
+        cout << "\n=== Cola Ejecutiva ===\n";
+        queue<Taxi> temp1 = colaEjecutiva;
         int pos = 1;
-        while (!temp.empty()) {
-            Taxi t = temp.front();
-            cout << pos++ << ". " << t.placa << " (" << t.categoria << ") - Conductor: " 
-                 << t.conductor.nombre << endl;
-            temp.pop();
+        while (!temp1.empty()) {
+            Taxi t = temp1.front();
+            cout << pos++ << ". Placa " << t.placa << " - Conductor: " << t.conductor.nombre << endl;
+            temp1.pop();
+        }
+
+        cout << "\n=== Cola Tradicional ===\n";
+        queue<Taxi> temp2 = colaTradicional;
+        pos = 1;
+        while (!temp2.empty()) {
+            Taxi t = temp2.front();
+            cout << pos++ << ". Placa " << t.placa << " - Conductor: " << t.conductor.nombre << endl;
+            temp2.pop();
+        }
+    }
+
+   
+    void solicitarTaxi() {
+        cout << "\n=== Solicitar Taxi ===\n";
+        cout << "1. Ejecutiva\n";
+        cout << "2. Tradicional\n";
+
+        int tipo = leerEntero("Seleccione tipo de servicio: ");
+
+        if (tipo == 1) {
+            if (colaEjecutiva.empty()) {
+                cout << "\nNo hay taxis Ejecutivos disponibles.\n";
+                return;
+            }
+            Taxi t = colaEjecutiva.front();
+            colaEjecutiva.pop();
+
+            cout << "\n=== TAXI EJECUTIVO ASIGNADO ===\n";
+            cout << "Placa: " << t.placa << endl;
+            cout << "Modelo: " << t.modelo << endl;
+            cout << "Conductor: " << t.conductor.nombre << " " << t.conductor.apellido << endl;
+            cout << "Telefono: " << t.conductor.telefono << endl;
+        }
+        else if (tipo == 2) {
+            if (colaTradicional.empty()) {
+                cout << "\nNo hay taxis Tradicionales disponibles.\n";
+                return;
+            }
+            Taxi t = colaTradicional.front();
+            colaTradicional.pop();
+
+            cout << "\n=== TAXI TRADICIONAL ASIGNADO ===\n";
+            cout << "Placa: " << t.placa << endl;
+            cout << "Modelo: " << t.modelo << endl;
+            cout << "Conductor: " << t.conductor.nombre << " " << t.conductor.apellido << endl;
+            cout << "Telefono: " << t.conductor.telefono << endl;
+        }
+        else {
+            cout << "Opción inválida.\n";
         }
     }
 };
+
+
+void usuariomenu(TrueDrive &sistema) {
+    int opcion;
+
+    do {
+        cout << "\n=== MENU DE USUARIO ===\n";
+        cout << "1. Mostrar taxis disponibles\n";
+        cout << "2. Llamar un taxi\n";
+        cout << "3. Regresar al menú principal\n";
+        opcion = leerEntero("Seleccione una opcion: ");
+
+        switch (opcion) {
+            case 1: sistema.mostrarCola(); break;
+            case 2: sistema.solicitarTaxi(); break;
+            case 3: break;
+            default: cout << "Opcion no valida.\n";
+        }
+
+    } while (opcion != 3);
+}
+
 
 int main() {
     TrueDrive sistema;
@@ -142,21 +223,23 @@ int main() {
 
     do {
         cout << "\n=== MENU TRUE DRIVE ===\n";
-        cout << "1. Registrar Taxi\n";
-        cout << "2. Mostrar Taxis\n";
-        cout << "3. Mostrar Cola de Espera\n";
-        cout << "4. Salir\n";
+        cout << "1. Usuario menu\n";
+        cout << "2. Registrar Taxi\n";
+        cout << "3. Mostrar Taxis\n";
+        cout << "4. Mostrar Cola de Espera\n";
+        cout << "5. Salir\n";
         opcion = leerEntero("Seleccione una opcion: ");
 
         switch (opcion) {
-            case 1: sistema.registrarTaxi(); break;
-            case 2: sistema.mostrarTaxis(); break;
-            case 3: sistema.mostrarCola(); break;
-            case 4: cout << "Saliendo...\n"; break;
+            case 1: usuariomenu(sistema); break;
+            case 2: sistema.registrarTaxi(); break;
+            case 3: sistema.mostrarTaxis(); break;
+            case 4: sistema.mostrarCola(); break;
+            case 5: cout << "Saliendo...\n"; break;
             default: cout << "Opcion no valida.\n";
         }
 
-    } while (opcion != 4);
+    } while (opcion != 5);
 
     return 0;
 }
