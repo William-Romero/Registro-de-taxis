@@ -5,12 +5,14 @@
 #include <limits>
 using namespace std;
 
+// ==========================================
+//   FUNCIONES AUXILIARES (Del código original)
+// ==========================================
 int leerEntero(string mensaje) {
     int valor;
     while (true) {
         cout << mensaje;
         cin >> valor;
-
         if (cin.fail()) { 
             cin.clear(); 
             cin.ignore(numeric_limits<streamsize>::max(), '\n'); 
@@ -25,65 +27,99 @@ int leerEntero(string mensaje) {
 string leerTexto(string mensaje) {
     string texto;
     cout << mensaje;
-    cin >> texto;
+    getline(cin, texto); // Usar getline para leer la línea completa, incluyendo espacios.
     return texto;
 }
 
+// ==========================================
+//   CLASES BASE (MODIFICADAS CON ENCAPSULACIÓN)
+// ==========================================
 class Conductor {
-public:
-    string nombre;
-    string apellido;
-    int documentoID;
-    int numeroSeguro;
-    int telefono;
+private:
+    string nombre, apellido;
+    int documentoID, numeroSeguro, telefono;
 
-    Conductor(string n, string a, int id, int seg, int tel) {
-        nombre = n;
-        apellido = a;
-        documentoID = id;
-        numeroSeguro = seg;
-        telefono = tel;
-    }
+public:
+    // Constructor con lista de inicialización
+    Conductor(string n, string a, int id, int seg, int tel)
+        : nombre(n), apellido(a), documentoID(id), numeroSeguro(seg), telefono(tel) {}
+
+    // Getters para acceder a los datos privados
+    string getNombre() const { return nombre; }
+    string getApellido() const { return apellido; }
+    int getDocumentoID() const { return documentoID; }
+    int getNumeroSeguro() const { return numeroSeguro; }
+    int getTelefono() const { return telefono; }
 };
 
 class Taxi {
-public:
-    int placa;
-    int numeroMotor;
-    string modelo;
-    int año;
-    string categoria;
+private:
+    int numeroMotor, año;
+    string placa;
+    string modelo, categoria; 
     Conductor conductor;
 
-    Taxi(int p, int m, string mod, int a, Conductor c)
+public:
+    // Constructor con lista de inicialización
+    Taxi(string p, int m, string mod, int a, Conductor c)
         : placa(p), numeroMotor(m), modelo(mod), año(a), conductor(c) 
     {
         if (a >= 2015) categoria = "Ejecutiva";
         else if (a >= 2010) categoria = "Tradicional";
         else categoria = "No valida";
     }
+
+    // Getters
+    string getPlaca() const { return placa; }
+    int getNumeroMotor() const { return numeroMotor; }
+    string getCategoria() const { return categoria; }
+    const Conductor& getConductor() const { return conductor; }
 };
 
+// ==========================================
+//   CLASE CONTROLADORA (MODIFICADA)
+// ==========================================
 class TrueDrive {
 private:
     vector<Taxi> taxis;
+    
+    // Colas de DISPONIBLES
     queue<Taxi> colaEjecutiva;
     queue<Taxi> colaTradicional;
 
-    bool esUnico(int placa, int motor, int doc, int seguro) {
+    // [TU CAMBIO MASTER] Colas de EN RUTA (Para no perder los taxis)
+    queue<Taxi> rutaEjecutiva;
+    queue<Taxi> rutaTradicional;
+
+    bool esUnico(string placa, int motor, int doc, int seguro) {
         for (auto &t : taxis) {
-            if (t.placa == placa || t.numeroMotor == motor ||
-                t.conductor.documentoID == doc || t.conductor.numeroSeguro == seguro)
+            if (t.getPlaca() == placa || t.getNumeroMotor() == motor ||
+                t.getConductor().getDocumentoID() == doc || t.getConductor().getNumeroSeguro() == seguro)
                 return false;
         }
         return true;
     }
 
+    // [TU CAMBIO MASTER] Función helper para imprimir cualquier cola
+    void imprimirColaGenerica(queue<Taxi> temp, string titulo) {
+        cout << "\n=== " << titulo << " ===\n";
+        if (temp.empty()) {
+            cout << "No hay taxis en esta lista.\n";
+            return;
+        }
+        int pos = 1;
+        while (!temp.empty()) {
+            Taxi t = temp.front();
+            cout << pos++ << ". Placa: " << t.getPlaca() 
+                 << " | Cond: " << t.getConductor().getNombre() << " " << t.getConductor().getApellido() 
+                 << " | Tel: " << t.getConductor().getTelefono() << endl;
+            temp.pop();
+        }
+    }
+
 public:
-
-
     void registrarTaxi() {
-        int placa = leerEntero("Placa: ");
+        string placa = leerTexto("Placa: ");
         int motor = leerEntero("Número de motor: ");
         string modelo = leerTexto("Modelo: ");
         int año = leerEntero("Año: ");
@@ -107,58 +143,36 @@ public:
 
         Conductor c(nombre, apellido, doc, seguro, tel);
         Taxi t(placa, motor, modelo, año, c);
-
         taxis.push_back(t);
 
-   
-        if (t.categoria == "Ejecutiva")
-            colaEjecutiva.push(t);
-        else
-            colaTradicional.push(t);
+        if (t.getCategoria() == "Ejecutiva") colaEjecutiva.push(t);
+        else colaTradicional.push(t);
 
-        cout << " Taxi registrado con categoría: " << t.categoria << endl;
+        cout << " Taxi registrado con categoría: " << t.getCategoria() << endl;
     }
 
-
-    void mostrarTaxis() {
-        cout << "\n=== Lista de Taxis Registrados ===\n";
+    void mostrarTaxisRegistrados() {
+        cout << "\n=== Inventario Total de Taxis ===\n";
         for (auto &t : taxis) {
-            cout << "Placa: " << t.placa
-                 << " | Modelo: " << t.modelo
-                 << " | Año: " << t.año
-                 << " | Categoría: " << t.categoria
-                 << " | Conductor: " << t.conductor.nombre << " " << t.conductor.apellido
-                 << endl;
+            cout << "Placa: " << t.getPlaca() << " | Cat: " << t.getCategoria() << endl;
         }
     }
 
-
-    void mostrarCola() {
-        cout << "\n=== Cola Ejecutiva ===\n";
-        queue<Taxi> temp1 = colaEjecutiva;
-        int pos = 1;
-        while (!temp1.empty()) {
-            Taxi t = temp1.front();
-            cout << pos++ << ". Placa " << t.placa << " - Conductor: " << t.conductor.nombre << endl;
-            temp1.pop();
-        }
-
-        cout << "\n=== Cola Tradicional ===\n";
-        queue<Taxi> temp2 = colaTradicional;
-        pos = 1;
-        while (!temp2.empty()) {
-            Taxi t = temp2.front();
-            cout << pos++ << ". Placa " << t.placa << " - Conductor: " << t.conductor.nombre << endl;
-            temp2.pop();
-        }
+    void mostrarColasDisponibles() {
+        imprimirColaGenerica(colaEjecutiva, "Disponibles Ejecutiva");
+        imprimirColaGenerica(colaTradicional, "Disponibles Tradicional");
     }
 
-   
+    // [TU CAMBIO MASTER] Nueva función para ver quién está trabajando
+    void mostrarColasEnRuta() {
+        imprimirColaGenerica(rutaEjecutiva, "En Ruta Ejecutiva");
+        imprimirColaGenerica(rutaTradicional, "En Ruta Tradicional");
+    }
+    
+    // [TU CAMBIO MASTER] Modificado para mover a ruta en vez de borrar
     void solicitarTaxi() {
-        cout << "\n=== Solicitar Taxi ===\n";
-        cout << "1. Ejecutiva\n";
-        cout << "2. Tradicional\n";
-
+        cout << "\n=== Solicitar Taxi (Asignar Viaje) ===\n";
+        cout << "1. Ejecutiva\n2. Tradicional\n";
         int tipo = leerEntero("Seleccione tipo de servicio: ");
 
         if (tipo == 1) {
@@ -167,13 +181,9 @@ public:
                 return;
             }
             Taxi t = colaEjecutiva.front();
-            colaEjecutiva.pop();
-
-            cout << "\n=== TAXI EJECUTIVO ASIGNADO ===\n";
-            cout << "Placa: " << t.placa << endl;
-            cout << "Modelo: " << t.modelo << endl;
-            cout << "Conductor: " << t.conductor.nombre << " " << t.conductor.apellido << endl;
-            cout << "Telefono: " << t.conductor.telefono << endl;
+            colaEjecutiva.pop();     // Sacar de disponibles
+            rutaEjecutiva.push(t);   // Meter a ruta
+            cout << "\n>>> VIAJE ASIGNADO: Taxi Ejecutivo Placa " << t.getPlaca() << " en camino.\n";
         }
         else if (tipo == 2) {
             if (colaTradicional.empty()) {
@@ -181,65 +191,89 @@ public:
                 return;
             }
             Taxi t = colaTradicional.front();
-            colaTradicional.pop();
+            colaTradicional.pop();      // Sacar de disponibles
+            rutaTradicional.push(t);    // Meter a ruta
+            cout << "\n>>> VIAJE ASIGNADO: Taxi Tradicional Placa " << t.getPlaca() << " en camino.\n";
+        }
+        else cout << "Opción inválida.\n";
+    }
 
-            cout << "\n=== TAXI TRADICIONAL ASIGNADO ===\n";
-            cout << "Placa: " << t.placa << endl;
-            cout << "Modelo: " << t.modelo << endl;
-            cout << "Conductor: " << t.conductor.nombre << " " << t.conductor.apellido << endl;
-            cout << "Telefono: " << t.conductor.telefono << endl;
+    // [TU CAMBIO MASTER] Nueva función para finalizar viaje
+    void finalizarViaje() {
+        cout << "\n=== Finalizar Viaje (Regresar a Base) ===\n";
+        cout << "1. Ejecutiva\n2. Tradicional\n";
+        int tipo = leerEntero("Seleccione tipo de taxi que regresa: ");
+
+        if (tipo == 1) {
+            if (rutaEjecutiva.empty()) {
+                cout << "No hay taxis Ejecutivos en ruta actualmente.\n";
+                return;
+            }
+            Taxi t = rutaEjecutiva.front();
+            rutaEjecutiva.pop();      // Sacar de ruta
+            colaEjecutiva.push(t);    // Regresar a disponibles (al final)
+            cout << "\n<<< RETORNO: Taxi Ejecutivo Placa " << t.getPlaca() << " disponible nuevamente.\n";
         }
-        else {
-            cout << "Opción inválida.\n";
+        else if (tipo == 2) {
+            if (rutaTradicional.empty()) {
+                cout << "No hay taxis Tradicionales en ruta actualmente.\n";
+                return;
+            }
+            Taxi t = rutaTradicional.front();
+            rutaTradicional.pop();       // Sacar de ruta
+            colaTradicional.push(t);     // Regresar a disponibles (al final)
+            cout << "\n<<< RETORNO: Taxi Tradicional Placa " << t.getPlaca() << " disponible nuevamente.\n";
         }
+        else cout << "Opción inválida.\n";
     }
 };
 
+// ==========================================
+//   MENÚS (ACTUALIZADOS)
+// ==========================================
 
 void usuariomenu(TrueDrive &sistema) {
     int opcion;
-
     do {
-        cout << "\n=== MENU DE USUARIO ===\n";
-        cout << "1. Mostrar taxis disponibles\n";
-        cout << "2. Llamar un taxi\n";
-        cout << "3. Regresar al menú principal\n";
+        cout << "\n=== MENU DE OPERACIONES ===\n";
+        cout << "1. Ver Taxis Disponibles \n";
+        cout << "2. Asignar Viaje \n";
+        cout << "3. Finalizar Viaje \n"; // [TU CAMBIO]
+        cout << "4. Ver Taxis En Ruta\n";         // [TU CAMBIO]
+        cout << "5. Regresar al menú principal\n";
         opcion = leerEntero("Seleccione una opcion: ");
 
         switch (opcion) {
-            case 1: sistema.mostrarCola(); break;
+            case 1: sistema.mostrarColasDisponibles(); break;
             case 2: sistema.solicitarTaxi(); break;
-            case 3: break;
+            case 3: sistema.finalizarViaje(); break;
+            case 4: sistema.mostrarColasEnRuta(); break;
+            case 5: break;
             default: cout << "Opcion no valida.\n";
         }
-
-    } while (opcion != 3);
+    } while (opcion != 5);
 }
-
 
 int main() {
     TrueDrive sistema;
     int opcion;
 
     do {
-        cout << "\n=== MENU TRUE DRIVE ===\n";
-        cout << "1. Usuario menu\n";
-        cout << "2. Registrar Taxi\n";
-        cout << "3. Mostrar Taxis\n";
-        cout << "4. Mostrar Cola de Espera\n";
-        cout << "5. Salir\n";
+        cout << "\n=== SISTEMA TRUE DRIVE ===\n";
+        cout << "1. Menu de Operaciones \n";
+        cout << "2. Registrar Taxi Nuevo \n";
+        cout << "3. Inventario Total \n";
+        cout << "4. Salir\n";
         opcion = leerEntero("Seleccione una opcion: ");
 
         switch (opcion) {
             case 1: usuariomenu(sistema); break;
             case 2: sistema.registrarTaxi(); break;
-            case 3: sistema.mostrarTaxis(); break;
-            case 4: sistema.mostrarCola(); break;
-            case 5: cout << "Saliendo...\n"; break;
+            case 3: sistema.mostrarTaxisRegistrados(); break;
+            case 4: cout << "Saliendo...\n"; break;
             default: cout << "Opcion no valida.\n";
         }
-
-    } while (opcion != 5);
+    } while (opcion != 4);
 
     return 0;
 }
