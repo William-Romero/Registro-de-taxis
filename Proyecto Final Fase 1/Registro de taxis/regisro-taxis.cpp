@@ -3,6 +3,7 @@
 #include <vector>
 #include <queue>
 #include <limits>
+#include <iomanip>
 using namespace std;
 
 // ==========================================
@@ -19,6 +20,22 @@ int leerEntero(string mensaje) {
             cout << " Entrada invalida. Ingrese un numero.\n";
         } else {
             cin.ignore(numeric_limits<streamsize>::max(), '\n'); 
+            return valor;
+        }
+    }
+}
+
+double leerDouble(string mensaje) {
+    double valor;
+    while (true) {
+        cout << mensaje;
+        cin >> valor;
+        if (cin.fail()) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout << " Entrada invalida. Ingrese un numero (decimal permitido).\n";
+        } else {
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
             return valor;
         }
     }
@@ -87,9 +104,17 @@ private:
     queue<Taxi> colaEjecutiva;
     queue<Taxi> colaTradicional;
 
-    // [TU CAMBIO MASTER] Colas de EN RUTA (Para no perder los taxis)
-    queue<Taxi> rutaEjecutiva;
-    queue<Taxi> rutaTradicional;
+    // Estructura de viaje para almacenar datos de ruta
+    struct Viaje {
+        Taxi taxi;
+        string origen;
+        string destino;
+        double costo;
+    };
+
+    // Colas de EN RUTA (con detalles del viaje)
+    queue<Viaje> rutaEjecutiva;
+    queue<Viaje> rutaTradicional;
 
     bool esUnico(string placa, int motor, int doc, int seguro) {
         for (auto &t : taxis) {
@@ -113,6 +138,26 @@ private:
             cout << pos++ << ". Placa: " << t.getPlaca() 
                  << " | Cond: " << t.getConductor().getNombre() << " " << t.getConductor().getApellido() 
                  << " | Tel: " << t.getConductor().getTelefono() << endl;
+            temp.pop();
+        }
+    }
+
+    void imprimirColaRuta(queue<Viaje> temp, string titulo) {
+        cout << "\n=== " << titulo << " ===\n";
+        if (temp.empty()) {
+            cout << "No hay taxis en esta lista.\n";
+            return;
+        }
+        int pos = 1;
+        cout << fixed << setprecision(2);
+        while (!temp.empty()) {
+            Viaje v = temp.front();
+            cout << pos++ << ". Placa: " << v.taxi.getPlaca()
+                 << " | Origen: " << v.origen
+                 << " | Destino: " << v.destino
+                 << " | Costo: $" << v.costo
+                 << " | Cond: " << v.taxi.getConductor().getNombre() << " " << v.taxi.getConductor().getApellido()
+                 << endl;
             temp.pop();
         }
     }
@@ -165,8 +210,8 @@ public:
 
     // [TU CAMBIO MASTER] Nueva función para ver quién está trabajando
     void mostrarColasEnRuta() {
-        imprimirColaGenerica(rutaEjecutiva, "En Ruta Ejecutiva");
-        imprimirColaGenerica(rutaTradicional, "En Ruta Tradicional");
+        imprimirColaRuta(rutaEjecutiva, "En Ruta Ejecutiva");
+        imprimirColaRuta(rutaTradicional, "En Ruta Tradicional");
     }
     
     // [TU CAMBIO MASTER] Modificado para mover a ruta en vez de borrar
@@ -175,15 +220,20 @@ public:
         cout << "1. Ejecutiva\n2. Tradicional\n";
         int tipo = leerEntero("Seleccione tipo de servicio: ");
 
+        string origen = leerTexto("Origen del viaje: ");
+        string destino = leerTexto("Destino del viaje: ");
+        double costo = leerDouble("Costo del viaje: $");
+
         if (tipo == 1) {
             if (colaEjecutiva.empty()) {
                 cout << "\nNo hay taxis Ejecutivos disponibles.\n";
                 return;
             }
             Taxi t = colaEjecutiva.front();
-            colaEjecutiva.pop();     // Sacar de disponibles
-            rutaEjecutiva.push(t);   // Meter a ruta
-            cout << "\n>>> VIAJE ASIGNADO: Taxi Ejecutivo Placa " << t.getPlaca() << " en camino.\n";
+            colaEjecutiva.pop();
+            Viaje v{t, origen, destino, costo};
+            rutaEjecutiva.push(v);
+            cout << "\n>>> VIAJE ASIGNADO: Taxi Ejecutivo Placa " << t.getPlaca() << " | Origen: " << origen << " | Destino: " << destino << " | Costo: $" << costo << "\n";
         }
         else if (tipo == 2) {
             if (colaTradicional.empty()) {
@@ -191,9 +241,10 @@ public:
                 return;
             }
             Taxi t = colaTradicional.front();
-            colaTradicional.pop();      // Sacar de disponibles
-            rutaTradicional.push(t);    // Meter a ruta
-            cout << "\n>>> VIAJE ASIGNADO: Taxi Tradicional Placa " << t.getPlaca() << " en camino.\n";
+            colaTradicional.pop();
+            Viaje v{t, origen, destino, costo};
+            rutaTradicional.push(v);
+            cout << "\n>>> VIAJE ASIGNADO: Taxi Tradicional Placa " << t.getPlaca() << " | Origen: " << origen << " | Destino: " << destino << " | Costo: $" << costo << "\n";
         }
         else cout << "Opción inválida.\n";
     }
@@ -209,20 +260,20 @@ public:
                 cout << "No hay taxis Ejecutivos en ruta actualmente.\n";
                 return;
             }
-            Taxi t = rutaEjecutiva.front();
-            rutaEjecutiva.pop();      // Sacar de ruta
-            colaEjecutiva.push(t);    // Regresar a disponibles (al final)
-            cout << "\n<<< RETORNO: Taxi Ejecutivo Placa " << t.getPlaca() << " disponible nuevamente.\n";
+            Viaje v = rutaEjecutiva.front();
+            rutaEjecutiva.pop();
+            colaEjecutiva.push(v.taxi);
+            cout << "\n<<< RETORNO: Taxi Ejecutivo Placa " << v.taxi.getPlaca() << " regresó de Origen: " << v.origen << " a Destino: " << v.destino << ". Disponible nuevamente.\n";
         }
         else if (tipo == 2) {
             if (rutaTradicional.empty()) {
                 cout << "No hay taxis Tradicionales en ruta actualmente.\n";
                 return;
             }
-            Taxi t = rutaTradicional.front();
-            rutaTradicional.pop();       // Sacar de ruta
-            colaTradicional.push(t);     // Regresar a disponibles (al final)
-            cout << "\n<<< RETORNO: Taxi Tradicional Placa " << t.getPlaca() << " disponible nuevamente.\n";
+            Viaje v = rutaTradicional.front();
+            rutaTradicional.pop();
+            colaTradicional.push(v.taxi);
+            cout << "\n<<< RETORNO: Taxi Tradicional Placa " << v.taxi.getPlaca() << " regresó de Origen: " << v.origen << " a Destino: " << v.destino << ". Disponible nuevamente.\n";
         }
         else cout << "Opción inválida.\n";
     }
